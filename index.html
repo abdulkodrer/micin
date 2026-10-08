@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solana Toolkit</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#14161a;--mu:#6b7280;--bd:#e2e5ea;--ok:#0f9d58;--bad:#d93025;--ac:#6d4aff}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--tx:#e8eaee;--mu:#8b93a1;--bd:#262b35;--ok:#34c37a;--bad:#ff6b60;--ac:#8f78ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:980px;margin:0 auto;padding:20px 16px 60px}h1{font-size:22px;margin:0 0 4px}.mu{color:var(--mu);font-size:13px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:3px}
+input,textarea{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button{padding:8px 16px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.s{background:var(--card);color:var(--tx);border:1px solid var(--bd)}button.stop{background:var(--bad)}
+.tabs{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}.tb{background:var(--card);color:var(--mu);border:1px solid var(--bd)}.tb.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.bar{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.warn{border-left:4px solid var(--bad);padding:8px 12px;margin-top:14px;background:var(--card);border-radius:8px;font-size:13px}
+.al{border:1px solid var(--ok);border-radius:10px;padding:12px;margin-top:10px}.al b{color:var(--ok)}
+.al code{display:block;word-break:break-all;font-size:12px;margin:4px 0;color:var(--mu)}.al a,td a{color:var(--ac);margin-right:10px;font-size:13px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--bd);color:var(--mu);margin-left:6px}
+.log{max-height:260px;overflow:auto;font-size:12.5px;margin-top:10px}.log div{padding:2px 0;border-bottom:1px dashed var(--bd);word-break:break-all}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bd);white-space:nowrap}th{color:var(--mu);font-weight:600}
+.bad{color:var(--bad)}.ok{color:var(--ok)}[hidden]{display:none!important}
+</style></head><body><div class="w">
+<h1>Solana Toolkit</h1>
+<div class="mu">Analisis dan alert saja. Tidak membeli apa pun dan tidak meminta private key. Semua berjalan di browser kamu.</div>
+<div class="warn">Filter hanya mengurangi tanda bahaya umum. Tidak ada jaminan token naik atau wallet bisa ditiru. Bukan saran keuangan.</div>
+<div class="card" id="keybox"><label>Helius API key</label><input id="key" type="password" placeholder="tempel API key" autocomplete="off"></div>
+<div class="tabs"><button class="tb on" data-t="t1">Cari Token</button><button class="tb" data-t="t2">Wallet Early Buyer</button><button class="tb" data-t="t3">Token Baru</button></div>
+
+<section id="t1"><div class="card"><div class="grid">
+<div><label>Halaman per sumber</label><input id="f_pg" type="number" value="2"></div>
+<div><label>Umur min (hari)</label><input id="f_min" type="number" value="2"></div>
+<div><label>Umur maks (hari)</label><input id="f_max" type="number" value="90"></div>
+<div><label>Likuiditas min (USD)</label><input id="f_liq" type="number" value="10000"></div></div>
+<div class="bar"><button id="f_go">Cari token</button><button id="f_send" class="s">Kirim ke tab Wallet</button></div>
+<div id="f_res" class="mu" style="margin-top:10px"></div><div id="f_log" class="log mu"></div></div></section>
+
+<section id="t2" hidden><div class="card"><label>Mint address token (satu per baris)</label><textarea id="w_m" rows="5"></textarea>
+<div class="grid" style="margin-top:10px">
+<div><label>Transaksi awal / token</label><input id="w_e" type="number" value="100"></div>
+<div><label>Muncul di min token</label><input id="w_mt" type="number" value="2"></div>
+<div><label>Token naik min (x)</label><input id="w_tm" type="number" value="5"></div>
+<div><label>Multiple wallet min (x)</label><input id="w_wm" type="number" value="3"></div>
+<div><label>Min big win</label><input id="w_win" type="number" value="2"></div>
+<div><label>Batas halaman token</label><input id="w_mp" type="number" value="30"></div>
+<div><label>Batas halaman wallet</label><input id="w_wp" type="number" value="10"></div></div>
+<div class="bar"><button id="w_go">Mulai analisis</button><button id="w_csv" class="s">Unduh CSV</button></div>
+<div id="w_res"></div><div id="w_log" class="log mu"></div></div></section>
+
+<section id="t3" hidden><div class="card"><div class="grid">
+<div><label>Likuiditas min (USD)</label><input id="s_liq" type="number" value="15000"></div>
+<div><label>FDV maks (USD)</label><input id="s_fdv" type="number" value="2000000"></div>
+<div><label>Umur pool maks (menit)</label><input id="s_age" type="number" value="120"></div>
+<div><label>Buyer 1 jam min</label><input id="s_buy" type="number" value="30"></div>
+<div><label>Seller 1 jam min</label><input id="s_sell" type="number" value="5"></div>
+<div><label>Top 10 holder maks (%)</label><input id="s_top" type="number" value="35"></div>
+<div><label>LP terkunci min (%)</label><input id="s_lp" type="number" value="80"></div>
+<div><label>Jeda putaran (detik)</label><input id="s_int" type="number" value="60"></div></div>
+<div class="bar"><button id="s_go">Mulai scan</button><span id="s_st" class="mu">Berhenti</span></div></div>
+<div class="card"><b>Alert (lolos semua filter)</b><div id="s_al"><div class="mu" style="margin-top:8px">Belum ada.</div></div></div>
+<div class="card"><b>Log</b><div id="s_log" class="log mu"></div></div></section>
+</div>
+<script>
+const HELIUS_KEY="PASTE_API_KEY_KAMU_DI_SINI",PH="PASTE_API_KEY_KAMU_DI_SINI";
+const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms)),n=x=>{const v=parseFloat(x);return isFinite(v)?v:0};
+const key=()=>HELIUS_KEY!==PH?HELIUS_KEY:$("key").value.trim();
+if(HELIUS_KEY!==PH)$("keybox").hidden=true;
+const GK="https://api.geckoterminal.com/api/v2/networks/solana",SOL="So11111111111111111111111111111111111111112";
+const SKIP=new Set([SOL,"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"]);
+const B58=/^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const mkLog=id=>(t,c)=>{const d=document.createElement("div");if(c)d.className=c;d.textContent=new Date().toLocaleTimeString()+"  "+t;const L=$(id);L.prepend(d);while(L.children.length>300)L.lastChild.remove()};
+const L1=mkLog("f_log"),L2=mkLog("w_log"),L3=mkLog("s_log");
+async function jget(u,o,t=4){for(let i=0;i<t;i++){const r=await fetch(u,o);if(r.status===429){await sleep(2000*(i+1));continue}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}throw new Error("rate limit")}
+const gk=p=>jget(GK+p);
+const post=b=>({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+const rpc=(m,p)=>jget("https://mainnet.helius-rpc.com/?api-key="+encodeURIComponent(key()),post({jsonrpc:"2.0",id:1,method:m,params:p})).then(j=>{if(j.error)throw new Error(j.error.message);return j.result});
+function table(el,h,rows){el.innerHTML="";if(!rows.length){el.textContent="Tidak ada hasil.";return}const t=document.createElement("table"),r0=t.insertRow();
+h.forEach(x=>{const c=document.createElement("th");c.textContent=x;r0.append(c)});
+rows.forEach(r=>{const tr=t.insertRow();r.forEach(v=>{const c=tr.insertCell();if(v&&v.h){const a=document.createElement("a");a.href=v.h;a.target="_blank";a.rel="noopener";a.textContent=v.t;c.append(a)}else c.textContent=v})});
+const w=document.createElement("div");w.style.overflowX="auto";w.append(t);el.append(w)}
+function show(id){document.querySelectorAll("section").forEach(s=>s.hidden=s.id!==id);document.querySelectorAll(".tb").forEach(b=>b.classList.toggle("on",b.dataset.t===id))}
+document.querySelectorAll(".tb").forEach(b=>b.onclick=()=>show(b.dataset.t));
+const needKey=()=>{if(!key()){alert("Isi Helius API key dulu (gratis di helius.dev)");return true}};
+const poolInfo=p=>{try{const a=p.attributes,mint=p.relationships.base_token.data.id.split("_")[1];if(!B58.test(mint)||SKIP.has(mint))return null;return{a,mint,created:new Date(a.pool_created_at)}}catch(e){return null}};
+
+/* ===== TAB 1: Cari Token ===== */
+let found={};
+$("f_go").onclick=async()=>{
+  found={};const pg=n($("f_pg").value)||2,mn=n($("f_min").value),mx=n($("f_max").value),lq=n($("f_liq").value);
+  const S=[["trending_pools","duration=24h"],["trending_pools","duration=6h"],["pools","sort=h24_tx_count_desc"],["pools","sort=h24_volume_usd_desc"]];
+  $("f_go").disabled=true;
+  for(const [p,q] of S)for(let g=1;g<=pg;g++){
+    L1(`ambil ${p} ${q} hal ${g}`);let d;
+    try{d=(await gk(`/${p}?page=${g}&${q}`)).data||[]}catch(e){L1("gagal: "+e.message,"bad");break}
+    if(!d.length)break;
+    for(const x of d){const i=poolInfo(x);if(!i)continue;const age=(Date.now()-i.created)/864e5,liq=n(i.a.reserve_in_usd);
+      if(liq<lq||age<mn||age>mx)continue;
+      found[i.mint]={name:String(i.a.name||"").slice(0,30),age:age.toFixed(1),liq:Math.round(liq).toLocaleString(),chg:(i.a.price_change_percentage||{}).h24||"-"}}
+    await sleep(2300);
+  }
+  $("f_go").disabled=false;const ks=Object.keys(found);
+  table($("f_res"),["Nama","Umur (hari)","Liq (USD)","Chg 24j (%)","Mint","Link"],
+    ks.map(m=>[found[m].name,found[m].age,found[m].liq,found[m].chg,m,{t:"DexScreener",h:"https://dexscreener.com/solana/"+m}]));
+  L1(`${ks.length} kandidat ditemukan`,"ok");
+};
+$("f_send").onclick=()=>{const k=Object.keys(found);if(!k.length){alert("Belum ada hasil. Klik Cari token dulu.");return}$("w_m").value=k.join("\n");show("t2")};
+
+/* ===== TAB 2: Wallet Early Buyer ===== */
+let wRun=false,wRows=[];
+async function tokMult(m){try{
+  const pl=(await gk(`/tokens/${m}/pools?page=1`)).data||[];if(!pl.length)return null;const pool=pl[0].attributes.address;await sleep(2300);
+  const days=(await gk(`/pools/${pool}/ohlcv/day?aggregate=1&limit=1000&currency=usd`)).data.attributes.ohlcv_list;if(!days.length)return null;
+  const peak=Math.max(...days.map(c=>c[2])),d0=Math.min(...days.map(c=>c[0]));let start=days.reduce((a,b)=>b[0]<a[0]?b:a)[1];await sleep(2300);
+  const mins=(await gk(`/pools/${pool}/ohlcv/minute?aggregate=1&limit=1000&currency=usd&before_timestamp=${d0+21600}`)).data.attributes.ohlcv_list;
+  if(mins.length)start=mins.reduce((a,b)=>b[0]<a[0]?b:a)[1];return start>0?peak/start:null}catch(e){return null}}
+async function sigs(m,mp){let all=[],before;for(let i=0;i<mp;i++){const o={limit:1000};if(before)o.before=before;const r=await rpc("getSignaturesForAddress",[m,o]);
+  if(!r.length)return[all,true];all=all.concat(r);before=r[r.length-1].signature;if(r.length<1000)return[all,true];await sleep(200)}return[all,false]}
+async function parseTx(list){let out=[];for(let i=0;i<list.length;i+=100){out=out.concat(await jget("https://api.helius.xyz/v0/transactions?api-key="+encodeURIComponent(key()),post({transactions:list.slice(i,i+100)})));await sleep(200)}return out}
+async function wtxs(w,stop,mp){let t=[],before;for(let i=0;i<mp;i++){const b=await jget(`https://api.helius.xyz/v0/addresses/${w}/transactions?api-key=${encodeURIComponent(key())}&limit=100&type=SWAP`+(before?`&before=${before}`:""));
+  if(!b.length)break;t=t.concat(b);before=b[b.length-1].signature;if(b.length<100||(b[b.length-1].timestamp||0)<stop)break;await sleep(200)}return t}
+function pnl(w,m,txs){let so=0,si=0,tb=0,ts=0;
+  for(const tx of txs){let d=0;for(const a of tx.accountData||[])if(a.account===w)d=a.nativeBalanceChange||0;
+    for(const t of tx.tokenTransfers||[]){if(t.mint!==m)continue;const amt=n(t.tokenAmount);
+      if(t.toUserAccount===w){tb+=amt;if(d<0)so+=-d/1e9}else if(t.fromUserAccount===w){ts+=amt;if(d>0)si+=d/1e9}}}
+  if(tb<=0)return null;const sr=Math.min(1,ts/tb);return{pnl:si-so*sr,mult:(ts>0&&so>0&&si>0)?(si/ts)/(so/tb):null}}
+async function runW(){
+  const mints=$("w_m").value.split(/\s+/).filter(x=>B58.test(x)),E=n($("w_e").value)||100,MT=n($("w_mt").value),TM=n($("w_tm").value),WM=n($("w_wm").value),MW=n($("w_win").value),MP=n($("w_mp").value)||30,WP=n($("w_wp").value)||10;
+  const appear={},fts={};wRows=[];
+  for(let i=0;i<mints.length&&wRun;i++){const m=mints[i];L2(`[${i+1}/${mints.length}] ${m}`);
+    if(TM>1){const x=await tokMult(m);if(x==null)L2("  ? multiple tidak diketahui, tetap diproses");else{L2(`  token naik ~${x.toFixed(1)}x`);if(x<TM){L2("  - dilewati (di bawah batas)");continue}}}
+    try{const [s,ok]=await sigs(m,MP);if(!ok){L2("  ! terlalu ramai, naikkan batas halaman token","bad");continue}
+      const good=s.filter(x=>!x.err).slice(0,s.length).reverse().slice(0,E);if(!good.length)continue;
+      const ft=good[0].blockTime||0;fts[m]=ft;const parsed={};(await parseTx(good.map(x=>x.signature))).forEach(t=>parsed[t.signature]=t);const seen=new Set();
+      good.forEach((x,k)=>{const tx=parsed[x.signature];if(!tx)return;const p=tx.feePayer;
+        if((tx.tokenTransfers||[]).some(t=>t.mint===m&&t.toUserAccount===p)&&!seen.has(p)){seen.add(p);(appear[p]=appear[p]||[]).push([m,k+1])}})}
+    catch(e){L2("  ! error: "+e.message,"bad")}}
+  const cands=Object.entries(appear).filter(([w,h])=>h.length>=MT);L2(`${cands.length} wallet muncul di >= ${MT} token. Menghitung PnL...`);
+  for(let i=0;i<cands.length&&wRun;i++){const [w,hits]=cands[i];L2(`PnL [${i+1}/${cands.length}] ${w}`);
+    try{const txs=await wtxs(w,Math.min(...hits.map(h=>fts[h[0]]))-3600,WP);let tot=0,wins=0,big=0,ms=[];
+      for(const [m] of hits){const p=pnl(w,m,txs);if(!p)continue;tot+=p.pnl;if(p.pnl>0)wins++;if(p.mult&&p.mult>=WM&&p.pnl>0)big++;if(p.mult)ms.push(p.mult)}
+      if(big<MW)continue;const sn=hits.filter(h=>h[1]<=5).length;
+      wRows.push({wallet:w,big_wins:big,profit:`${wins}/${hits.length}`,pnl_sol:+tot.toFixed(2),avg_x:ms.length?+(ms.reduce((a,b)=>a+b,0)/ms.length).toFixed(2):"",rata_urutan:+(hits.reduce((a,h)=>a+h[1],0)/hits.length).toFixed(1),sniper:sn>=2?"curiga dev/sniper":""})}
+    catch(e){L2("  ! error: "+e.message,"bad")}}
+  wRows.sort((a,b)=>b.big_wins-a.big_wins||b.pnl_sol-a.pnl_sol);
+  table($("w_res"),["Wallet","Big wins","Token profit","PnL (SOL)","Avg x","Urutan beli","Catatan"],wRows.map(r=>[{t:r.wallet,h:"https://solscan.io/account/"+r.wallet},r.big_wins,r.profit,r.pnl_sol,r.avg_x,r.rata_urutan,r.sniper]));
+  L2(wRows.length?`${wRows.length} wallet lolos`:"Tidak ada wallet yang memenuhi kriteria. Longgarkan filter atau tambah token.",wRows.length?"ok":"bad");
+}
+$("w_go").onclick=async()=>{const b=$("w_go");if(wRun){wRun=false;return}if(needKey())return;
+  wRun=true;b.textContent="Stop";b.classList.add("stop");try{await runW()}catch(e){L2("error: "+e.message,"bad")}wRun=false;b.textContent="Mulai analisis";b.classList.remove("stop")};
+$("w_csv").onclick=()=>{if(!wRows.length)return;const h=Object.keys(wRows[0]),c=[h.join(","),...wRows.map(r=>h.map(k=>r[k]).join(","))].join("\n"),a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([c],{type:"text/csv"}));a.download="hasil_wallet.csv";a.click()};
+
+/* ===== TAB 3: Token Baru ===== */
+let sRun=false;const seenS=new Set();
+async function chkMint(m){const p=(await rpc("getAccountInfo",[m,{encoding:"jsonParsed"}])).value.data.parsed.info;
+  if(p.mintAuthority)return{r:"mint authority masih aktif"};if(p.freezeAuthority)return{r:"freeze authority aktif"};
+  const sup=n(p.supply)||1,top=(await rpc("getTokenLargestAccounts",[m])).value.map(t=>n(t.amount)).sort((a,b)=>b-a),t10=top.slice(1,11).reduce((a,b)=>a+b,0)/sup*100;
+  if(t10>n($("s_top").value))return{r:`top 10 holder (di luar pool) pegang ${t10.toFixed(0)}%`};return{dec:p.decimals??6}}
+async function chkRug(m){try{const r=await fetch("https://api.rugcheck.xyz/v1/tokens/"+m+"/report/summary");if(!r.ok)return{warn:"RugCheck tidak punya data"};const d=await r.json();
+  for(const k of d.risks||[])if(String(k.level).toLowerCase()==="danger")return{r:"RugCheck danger: "+k.name};
+  if(d.lpLockedPct!=null&&d.lpLockedPct<n($("s_lp").value))return{r:`LP terkunci hanya ${d.lpLockedPct.toFixed(0)}%`};return{}}catch(e){return{warn:"RugCheck tidak bisa diakses dari browser (cek manual)"}}}
+async function chkSell(m,dec,price){if(!price)return"harga tidak diketahui, tes jual tidak bisa dilakukan";
+  try{const r=await fetch(`https://lite-api.jup.ag/swap/v1/quote?inputMint=${m}&outputMint=${SOL}&amount=${Math.floor(20/price*10**dec)}&slippageBps=1500`);
+  if(!r.ok)return"Jupiter tidak menemukan rute jual";const q=await r.json();if(!(n(q.outAmount)>0))return"quote jual bernilai nol";if(n(q.priceImpactPct)>0.15)return"price impact jual terlalu besar";return null}catch(e){return"tes jual gagal: "+e.message}}
+function addAlert(o){if($("s_al").querySelector(".mu"))$("s_al").innerHTML="";const d=document.createElement("div");d.className="al";
+  const h=document.createElement("div"),b=document.createElement("b");b.textContent=o.name;h.append(b);
+  o.warns.forEach(w=>{const s=document.createElement("span");s.className="tag";s.textContent=w;h.append(s)});
+  const c=document.createElement("code");c.textContent=o.mint;const m=document.createElement("div");m.className="mu";
+  m.textContent=`umur ${o.age.toFixed(0)} mnt | liq $${Math.round(o.liq).toLocaleString()} | fdv $${Math.round(o.fdv).toLocaleString()} | buyer/seller 1j: ${o.b}/${o.s}`;
+  const l=document.createElement("div");l.style.marginTop="6px";
+  [["RugCheck","https://rugcheck.xyz/tokens/"],["DexScreener","https://dexscreener.com/solana/"],["Bubblemaps","https://app.bubblemaps.io/sol/token/"]].forEach(([t,u])=>{const a=document.createElement("a");a.href=u+o.mint;a.target="_blank";a.rel="noopener";a.textContent=t;l.append(a)});
+  d.append(h,c,m,l);$("s_al").prepend(d);document.title="(!) "+o.name}
+async function evalPool(p){const i=poolInfo(p);if(!i||seenS.has(i.mint))return;seenS.add(i.mint);const{a,mint}=i,name=String(a.name||mint.slice(0,6)).slice(0,40),age=(Date.now()-i.created)/6e4;
+  if(age>n($("s_age").value))return;const liq=n(a.reserve_in_usd),fdv=n(a.fdv_usd)||n(a.market_cap_usd),h1=(a.transactions||{}).h1||{},b=h1.buyers||0,s=h1.sellers||0;let r=null,dec=6;const warns=[];
+  if(liq<n($("s_liq").value))r=`likuiditas $${Math.round(liq)} terlalu kecil`;else if(fdv<=0||fdv>n($("s_fdv").value))r=`FDV $${Math.round(fdv)} di luar batas`;
+  else if(b<n($("s_buy").value))r=`buyer baru ${b}`;else if(s<n($("s_sell").value))r=`seller baru ${s} (belum terbukti bisa dijual)`;
+  if(!r)try{const m=await chkMint(mint);if(m.r)r=m.r;else dec=m.dec}catch(e){r="cek on-chain gagal: "+e.message}
+  if(!r){const g=await chkRug(mint);if(g.r)r=g.r;else if(g.warn)warns.push(g.warn)}
+  if(!r)r=await chkSell(mint,dec,n(a.base_token_price_usd));
+  if(r){L3(`x ${name}: ditolak, ${r}`,"bad");return}L3("ALERT "+name,"ok");addAlert({name,mint,age,liq,fdv,b,s,warns})}
+async function sLoop(){while(sRun){for(const pg of [1,2]){if(!sRun)return;
+  try{const r=await fetch(`${GK}/new_pools?page=${pg}`);if(r.status===429){L3("kena batas request, tunggu 15 detik","bad");await sleep(15000);continue}
+    for(const p of (await r.json()).data||[]){if(!sRun)return;await evalPool(p)}}catch(e){L3("gagal ambil pool: "+e.message,"bad")}await sleep(2500)}
+  $("s_st").textContent="Scanning... putaran berikutnya "+n($("s_int").value)+" dtk lagi";await sleep(Math.max(10,n($("s_int").value))*1000);$("s_st").textContent="Scanning..."}}
+$("s_go").onclick=()=>{const b=$("s_go");if(sRun){sRun=false;b.textContent="Mulai scan";b.classList.remove("stop");$("s_st").textContent="Berhenti";return}
+  if(needKey())return;sRun=true;b.textContent="Stop";b.classList.add("stop");$("s_st").textContent="Scanning...";L3("scan dimulai");sLoop()};
+</script></body></html>
