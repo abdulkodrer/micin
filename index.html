@@ -58,7 +58,7 @@ table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}th,td{t
 <div><label>LP terkunci min (%)</label><input id="s_lp" type="number" value="80"></div>
 <div><label>Jeda putaran (detik)</label><input id="s_int" type="number" value="60"></div></div>
 <div class="bar"><button id="s_go">Mulai scan</button><span id="s_st" class="mu">Berhenti</span></div></div>
-<div class="card"><b>Alert (lolos semua filter)</b><div id="s_al"><div class="mu" style="margin-top:8px">Belum ada.</div></div></div>
+<div class="card"><b>Alert (lolos semua filter, tersimpan di browser)</b><button id="s_clr" class="s" style="float:right;padding:4px 10px">Hapus riwayat</button><div id="s_al"></div><div id="s_empty" class="mu" style="margin-top:8px">Belum ada.</div></div>
 <div class="card"><b>Log</b><div id="s_log" class="log mu"></div></div></section>
 </div>
 <script>
@@ -163,11 +163,13 @@ async function chkRug(m){try{const r=await fetch("https://api.rugcheck.xyz/v1/to
 async function chkSell(m,dec,price){if(!price)return"harga tidak diketahui, tes jual tidak bisa dilakukan";
   try{const r=await fetch(`https://lite-api.jup.ag/swap/v1/quote?inputMint=${m}&outputMint=${SOL}&amount=${Math.floor(20/price*10**dec)}&slippageBps=1500`);
   if(!r.ok)return"Jupiter tidak menemukan rute jual";const q=await r.json();if(!(n(q.outAmount)>0))return"quote jual bernilai nol";if(n(q.priceImpactPct)>0.15)return"price impact jual terlalu besar";return null}catch(e){return"tes jual gagal: "+e.message}}
-function addAlert(o){if($("s_al").querySelector(".mu"))$("s_al").innerHTML="";const d=document.createElement("div");d.className="al";
+const SKEY="sAlerts";let sAl=[];try{sAl=JSON.parse(localStorage.getItem(SKEY)||"[]")}catch(e){}
+const saveAl=()=>{try{localStorage.setItem(SKEY,JSON.stringify(sAl.slice(-200)))}catch(e){}};
+function addAlert(o,fresh=true){$("s_empty").hidden=true;if(fresh){o.t=new Date().toLocaleString();sAl.push(o);saveAl()}const d=document.createElement("div");d.className="al";
   const h=document.createElement("div"),b=document.createElement("b");b.textContent=o.name;h.append(b);
   o.warns.forEach(w=>{const s=document.createElement("span");s.className="tag";s.textContent=w;h.append(s)});
   const c=document.createElement("code");c.textContent=o.mint;const m=document.createElement("div");m.className="mu";
-  m.textContent=`umur ${o.age.toFixed(0)} mnt | liq $${Math.round(o.liq).toLocaleString()} | fdv $${Math.round(o.fdv).toLocaleString()} | buyer/seller 1j: ${o.b}/${o.s}`;
+  m.textContent=`${o.t?"terdeteksi "+o.t+" | ":""}umur ${o.age.toFixed(0)} mnt | liq $${Math.round(o.liq).toLocaleString()} | fdv $${Math.round(o.fdv).toLocaleString()} | buyer/seller 1j: ${o.b}/${o.s}`;
   const l=document.createElement("div");l.style.marginTop="6px";
   [["RugCheck","https://rugcheck.xyz/tokens/"],["DexScreener","https://dexscreener.com/solana/"],["Bubblemaps","https://app.bubblemaps.io/sol/token/"]].forEach(([t,u])=>{const a=document.createElement("a");a.href=u+o.mint;a.target="_blank";a.rel="noopener";a.textContent=t;l.append(a)});
   d.append(h,c,m,l);$("s_al").prepend(d);document.title="(!) "+o.name}
@@ -183,6 +185,8 @@ async function sLoop(){while(sRun){for(const pg of [1,2]){if(!sRun)return;
   try{const r=await fetch(`${GK}/new_pools?page=${pg}`);if(r.status===429){L3("kena batas request, tunggu 15 detik","bad");await sleep(15000);continue}
     for(const p of (await r.json()).data||[]){if(!sRun)return;await evalPool(p)}}catch(e){L3("gagal ambil pool: "+e.message,"bad")}await sleep(2500)}
   $("s_st").textContent="Scanning... putaran berikutnya "+n($("s_int").value)+" dtk lagi";await sleep(Math.max(10,n($("s_int").value))*1000);$("s_st").textContent="Scanning..."}}
+sAl.forEach(o=>{seenS.add(o.mint);addAlert(o,false)});
+$("s_clr").onclick=()=>{if(!confirm("Hapus semua riwayat alert?"))return;sAl=[];saveAl();$("s_al").innerHTML="";$("s_empty").hidden=false};
 $("s_go").onclick=()=>{const b=$("s_go");if(sRun){sRun=false;b.textContent="Mulai scan";b.classList.remove("stop");$("s_st").textContent="Berhenti";return}
   if(needKey())return;sRun=true;b.textContent="Stop";b.classList.add("stop");$("s_st").textContent="Scanning...";L3("scan dimulai");sLoop()};
 </script></body></html>
