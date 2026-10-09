@@ -34,20 +34,7 @@ table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}th,td{t
 <div><label>Umur maks (hari)</label><input id="f_max" type="number" value="90"></div>
 <div><label>Likuiditas min (USD)</label><input id="f_liq" type="number" value="10000"></div></div>
 <div class="bar"><button id="f_go">Cari token</button><button id="f_send" class="s">Kirim ke tab Wallet</button></div>
-<div id="f_res" class="mu" style="margin-top:10px"></div><div id="f_log" class="log mu"></div></div>
-<div class="card"><b>Cari dari berita / narasi viral</b>
-<div class="mu" style="margin-top:4px">Ambil headline yang lagi ramai, ekstrak keyword-nya (misal "GTA 6"), lalu cari token Solana yang namanya nyambung. Keyword boleh kamu edit atau tambah manual.</div>
-<div style="margin-top:10px"><label>Keyword (pisah koma)</label><textarea id="n_kw" rows="2" placeholder="gta 6, emulator, ..."></textarea></div>
-<div class="grid" style="margin-top:10px">
-<div><label>Maks keyword dicari</label><input id="n_max" type="number" value="12"></div>
-<div><label>Umur maks (hari)</label><input id="n_age" type="number" value="14"></div>
-<div><label>Likuiditas min (USD)</label><input id="n_liq" type="number" value="5000"></div>
-<div><label>Maks token / keyword</label><input id="n_per" type="number" value="5"></div></div>
-<div class="bar"><button id="n_news" class="s">Ambil berita trending</button><button id="n_go">Cari token dari keyword</button>
-<label style="display:flex;gap:6px;align-items:center;margin:0"><input id="n_safe" type="checkbox" checked style="width:auto"> Cek keamanan dasar (butuh Helius key)</label></div>
-<div id="n_res" class="mu" style="margin-top:10px"></div><div id="n_log" class="log mu"></div>
-<div class="mu" style="margin-top:8px">Token berita viral biasanya punya banyak kembaran dan sebagian besar scam. Kolom Kembaran menunjukkan berapa token berbeda yang cocok dengan keyword itu. Lolos cek dasar bukan berarti bagus.</div></div>
-</section>
+<div id="f_res" class="mu" style="margin-top:10px"></div><div id="f_log" class="log mu"></div></div></section>
 
 <section id="t2" hidden><div class="card"><label>Mint address token (satu per baris)</label><textarea id="w_m" rows="5"></textarea>
 <div class="grid" style="margin-top:10px">
@@ -71,6 +58,9 @@ table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}th,td{t
 <div><label>LP terkunci min (%)</label><input id="s_lp" type="number" value="80"></div>
 <div><label>Jeda putaran (detik)</label><input id="s_int" type="number" value="60"></div></div>
 <div class="bar"><button id="s_go">Mulai scan</button><span id="s_st" class="mu">Berhenti</span></div></div>
+<div class="card"><label style="display:flex;gap:6px;align-items:center;margin:0"><input id="s_nw" type="checkbox" checked style="width:auto"> Wajib nyambung berita trending (diambil otomatis)</label>
+<div style="margin-top:10px"><label>Keyword tambahan manual (opsional, pisah koma)</label><input id="s_kw" placeholder="gta 6, ..."></div>
+<div id="s_tr" class="mu" style="margin-top:10px">Keyword trending diambil otomatis saat scan dimulai, lalu diperbarui tiap 15 menit.</div></div>
 <div class="card"><b>Alert (lolos semua filter)</b><div id="s_al"><div class="mu" style="margin-top:8px">Belum ada.</div></div></div>
 <div class="card"><b>Log</b><div id="s_log" class="log mu"></div></div></section>
 </div>
@@ -119,55 +109,6 @@ $("f_go").onclick=async()=>{
 };
 $("f_send").onclick=()=>{const k=Object.keys(found);if(!k.length){alert("Belum ada hasil. Klik Cari token dulu.");return}$("w_m").value=k.join("\n");show("t2")};
 
-
-/* ===== TAB 1b: Cari dari Berita ===== */
-const L4=mkLog("n_log");
-const STOP=new Set("the a an this that these those what why how who when where which after before new now just i my me you your we our they their he she it its is are was were be been am do does did not no yes and or but if so as at by for from in into of on to with about over under up down out than then too very can could will would should may might one two first last all any more most some such only own same other another best top says say said report reports update video watch people man woman day days year years time get got going go make made need want like here there still back also til eli5 breaking live free official".split(" "));
-const rd=sub=>()=>jget(`https://www.reddit.com/r/${sub}/top.json?t=day&limit=40`).then(j=>j.data.children.map(c=>[c.data.title,c.data.score]));
-const NEWSRC=[["Reddit populer",rd("popular")],["Reddit gaming",rd("gaming")],["Reddit news",rd("news")],["Reddit worldnews",rd("worldnews")],["Reddit technology",rd("technology")],
-  ["Hacker News",()=>jget("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=40").then(j=>j.hits.map(h=>[h.title,h.points||1]))]];
-function extractKw(items){const m={};
-  for(const [t,w,src] of items){const seen=new Set();
-    for(const ph of (t.match(/(?:[A-Z][\w'\u2019-]*|\d+)(?:\s+(?:[A-Z][\w'\u2019-]*|\d+))*/g)||[])){
-      let ws=ph.split(/\s+/);while(ws.length&&STOP.has(ws[0].toLowerCase()))ws.shift();while(ws.length&&STOP.has(ws[ws.length-1].toLowerCase()))ws.pop();
-      const k=ws.join(" ").replace(/['\u2019]s$/,""),lk=k.toLowerCase();
-      if(k.length<3||k.length>28||/^\d+$/.test(k)||seen.has(lk))continue;seen.add(lk);
-      const e=m[lk]=m[lk]||{k,s:0,c:0,w:-1,t:"",src};e.s+=Math.log10(w+10);e.c++;if(w>e.w){e.w=w;e.t=t;e.src=src}}}
-  return Object.values(m).sort((a,b)=>b.s-a.s).slice(0,40)}
-let kwSrc={},nRun=false,nRows=[];
-$("n_news").onclick=async()=>{const b=$("n_news");b.disabled=true;const items=[];
-  for(const [nm,fn] of NEWSRC){try{const r=await fn();r.forEach(x=>items.push([x[0],x[1],nm]));L4(`${nm}: ${r.length} headline`,"ok")}catch(e){L4(`${nm} gagal: ${e.message} (kemungkinan diblok CORS/rate limit)`,"bad")}await sleep(500)}
-  b.disabled=false;if(!items.length){L4("Tidak ada berita yang bisa diambil. Isi keyword manual saja.","bad");return}
-  const ks=extractKw(items);kwSrc={};ks.forEach(x=>kwSrc[x.k.toLowerCase()]=x.src+": "+x.t);
-  $("n_kw").value=ks.map(x=>x.k).join(", ");L4(`${ks.length} keyword diekstrak dari ${items.length} headline. Edit dulu kalau ada yang tidak relevan.`,"ok")};
-const norm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,"");
-function kwMatch(kw,a){const base=norm(String(a.name||"").split("/")[0]),full=norm(kw);if(!base||!full)return false;
-  if(base.includes(full)||(base.length>=4&&full.includes(base)))return true;
-  return kw.toLowerCase().split(/\s+/).filter(w=>w.length>=4).some(w=>base.includes(norm(w)))}
-async function safeChk(m){try{const c=await chkMint(m);if(c.r)return "WARN: "+c.r;const g=await chkRug(m);if(g.r)return "WARN: "+g.r;return g.warn?"lolos cek on-chain; "+g.warn:"lolos cek dasar"}catch(e){return "cek gagal: "+e.message}}
-const fmtAge=d=>d<2?(d*24).toFixed(0)+" jam":d.toFixed(1)+" hari";
-function renderN(){table($("n_res"),["Keyword","Token","Umur","Liq (USD)","Chg 24j (%)","Buyer/Seller 1j","Kembaran","Keamanan","Berita","Mint","Link"],
-  nRows.map(r=>[r.kw,r.name,r.age,r.liq,r.chg,r.bs,r.twins,r.safe,r.news,r.mint,{t:"DexScreener",h:"https://dexscreener.com/solana/"+r.mint}]))}
-$("n_go").onclick=async()=>{const b=$("n_go");if(nRun){nRun=false;return}
-  const kws=[...new Set($("n_kw").value.split(",").map(x=>x.trim()).filter(Boolean))].slice(0,n($("n_max").value)||12);
-  if(!kws.length){alert("Isi keyword dulu atau klik Ambil berita trending.");return}
-  const safe=$("n_safe").checked;if(safe&&needKey())return;
-  const mx=n($("n_age").value)||14,lq=n($("n_liq").value),per=n($("n_per").value)||5;
-  nRun=true;nRows=[];b.textContent="Stop";b.classList.add("stop");
-  for(let i=0;i<kws.length&&nRun;i++){const kw=kws[i];L4(`[${i+1}/${kws.length}] cari "${kw}"`);let d=[];
-    try{d=(await jget(`https://api.geckoterminal.com/api/v2/search/pools?query=${encodeURIComponent(kw)}&network=solana&page=1`)).data||[]}catch(e){L4("  gagal: "+e.message,"bad");await sleep(2300);continue}
-    const by={};
-    for(const x of d){const inf=poolInfo(x);if(!inf||!kwMatch(kw,inf.a))continue;const age=(Date.now()-inf.created)/864e5,liq=n(inf.a.reserve_in_usd);
-      if(age>mx||liq<lq)continue;if(!by[inf.mint]||liq>by[inf.mint].liq)by[inf.mint]={a:inf.a,mint:inf.mint,age,liq}}
-    const c=Object.values(by).sort((p,q)=>q.liq-p.liq),tw=c.length;
-    if(!tw)L4("  tidak ada token yang cocok dan lolos filter umur/likuiditas");
-    for(const x of c.slice(0,per)){if(!nRun)break;const h1=(x.a.transactions||{}).h1||{};
-      const sf=safe?await safeChk(x.mint):"tidak dicek";
-      const row={kw,name:String(x.a.name||"").slice(0,28),age:fmtAge(x.age),liq:Math.round(x.liq).toLocaleString(),chg:(x.a.price_change_percentage||{}).h24||"-",bs:`${h1.buyers||0}/${h1.sellers||0}`,twins:tw,safe:sf,news:(kwSrc[kw.toLowerCase()]||"manual").slice(0,70),mint:x.mint};
-      nRows.push(row);found[x.mint]={name:row.name,age:(x.age).toFixed(1),liq:row.liq,chg:row.chg};L4(`  ${row.name}: ${sf}`,sf.startsWith("WARN")||sf.startsWith("cek gagal")?"bad":"ok")}
-    nRows.sort((p,q)=>(p.safe.startsWith("WARN")?1:0)-(q.safe.startsWith("WARN")?1:0)||kws.indexOf(p.kw)-kws.indexOf(q.kw));renderN();await sleep(2300)}
-  nRun=false;b.textContent="Cari token dari keyword";b.classList.remove("stop");L4(`selesai, ${nRows.length} token`,"ok")};
-
 /* ===== TAB 2: Wallet Early Buyer ===== */
 let wRun=false,wRows=[];
 async function tokMult(m){try{
@@ -213,6 +154,38 @@ $("w_go").onclick=async()=>{const b=$("w_go");if(wRun){wRun=false;return}if(need
 $("w_csv").onclick=()=>{if(!wRows.length)return;const h=Object.keys(wRows[0]),c=[h.join(","),...wRows.map(r=>h.map(k=>r[k]).join(","))].join("\n"),a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([c],{type:"text/csv"}));a.download="hasil_wallet.csv";a.click()};
 
+/* ===== Berita trending otomatis (dipakai Token Baru) ===== */
+const STOP=new Set("the a an this that these those what why how who when where which after before new now just i my me you your we our they their he she it its is are was were be been am do does did not no yes and or but if so as at by for from in into of on to with about over under up down out than then too very can could will would should may might one two first last all any more most some such only own same other another best top says say said report reports update video watch people man woman day days year years time get got going go make made need want like here there still back also til eli5 breaking live free official".split(" "));
+const rd=sub=>()=>jget(`https://www.reddit.com/r/${sub}/top.json?t=day&limit=40`).then(j=>j.data.children.map(c=>[c.data.title,c.data.score]));
+const NEWSRC=[["Reddit populer",rd("popular")],["Reddit gaming",rd("gaming")],["Reddit news",rd("news")],["Reddit worldnews",rd("worldnews")],["Reddit technology",rd("technology")],
+  ["Hacker News",()=>jget("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=40").then(j=>j.hits.map(h=>[h.title,h.points||1]))]];
+function extractKw(items){const m={};
+  for(const [t,w,src] of items){const seen=new Set();
+    for(const ph of (t.match(/(?:[A-Z][\w'\u2019-]*|\d+)(?:\s+(?:[A-Z][\w'\u2019-]*|\d+))*/g)||[])){
+      let ws=ph.split(/\s+/);while(ws.length&&STOP.has(ws[0].toLowerCase()))ws.shift();while(ws.length&&STOP.has(ws[ws.length-1].toLowerCase()))ws.pop();
+      const k=ws.join(" ").replace(/['\u2019]s$/,""),lk=k.toLowerCase();
+      if(k.length<3||k.length>28||/^\d+$/.test(k)||seen.has(lk))continue;seen.add(lk);
+      const e=m[lk]=m[lk]||{k,s:0,w:-1,t:"",src};e.s+=Math.log10(w+10);if(w>e.w){e.w=w;e.t=t;e.src=src}}}
+  return Object.values(m).sort((a,b)=>b.s-a.s).slice(0,40)}
+let trend=[],trendAt=0,nNo=0;
+const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const allKw=()=>trend.concat(($("s_kw").value||"").split(",").map(x=>x.trim()).filter(Boolean).map(k=>({k,t:"keyword manual",src:"manual"})));
+function renderTrend(){const el=$("s_tr");el.innerHTML="";const k=allKw(),b=document.createElement("b");b.textContent="Keyword aktif ("+k.length+")";el.append(b);
+  k.forEach(x=>{const t=document.createElement("span");t.className="tag";t.title=x.src+": "+x.t;t.textContent=x.k;el.append(t)})}
+async function refreshTrend(){const items=[];
+  for(const [nm,fn] of NEWSRC){try{const r=await fn();r.forEach(x=>items.push([x[0],x[1],nm]));L3(`berita ${nm}: ${r.length} headline`)}catch(e){L3(`berita ${nm} gagal: ${e.message}`,"bad")}await sleep(400)}
+  trendAt=Date.now();
+  if(items.length){trend=extractKw(items);L3(`${trend.length} keyword trending diperbarui`,"ok")}
+  else L3("semua sumber berita gagal (CORS/rate limit). Pakai keyword lama atau manual saja.","bad");
+  renderTrend()}
+function newsHit(a,tokName){const base=norm(String(a.name||"").split("/")[0]),nm=norm(tokName);
+  for(const x of allKw()){const full=norm(x.k);if(full.length<3)continue;
+    if(base.includes(full)||nm.includes(full)||(base.length>=4&&full.includes(base)))return x;
+    const ws=x.k.toLowerCase().split(/\s+/).filter(w=>w.length>=4).map(norm);
+    if(ws.some(w=>base.includes(w)||nm.includes(w)))return x}
+  return null}
+$("s_kw").oninput=renderTrend;
+
 /* ===== TAB 3: Token Baru ===== */
 let sRun=false;const seenS=new Set();
 async function chkMint(m){const p=(await rpc("getAccountInfo",[m,{encoding:"jsonParsed"}])).value.data.parsed.info;
@@ -232,19 +205,19 @@ function addAlert(o){if($("s_al").querySelector(".mu"))$("s_al").innerHTML="";co
   m.textContent=`umur ${o.age.toFixed(0)} mnt | liq $${Math.round(o.liq).toLocaleString()} | fdv $${Math.round(o.fdv).toLocaleString()} | buyer/seller 1j: ${o.b}/${o.s}`;
   const l=document.createElement("div");l.style.marginTop="6px";
   [["RugCheck","https://rugcheck.xyz/tokens/"],["DexScreener","https://dexscreener.com/solana/"],["Bubblemaps","https://app.bubblemaps.io/sol/token/"]].forEach(([t,u])=>{const a=document.createElement("a");a.href=u+o.mint;a.target="_blank";a.rel="noopener";a.textContent=t;l.append(a)});
-  d.append(h,c,m,l);$("s_al").prepend(d);document.title="(!) "+o.name}
-async function evalPool(p){const i=poolInfo(p);if(!i||seenS.has(i.mint))return;seenS.add(i.mint);const{a,mint}=i,name=String(a.name||mint.slice(0,6)).slice(0,40),age=(Date.now()-i.created)/6e4;
-  if(age>n($("s_age").value))return;const liq=n(a.reserve_in_usd),fdv=n(a.fdv_usd)||n(a.market_cap_usd),h1=(a.transactions||{}).h1||{},b=h1.buyers||0,s=h1.sellers||0;let r=null,dec=6;const warns=[];
+  if(o.news){const nw=document.createElement("div");nw.style.cssText="font-size:13px;margin-top:4px";nw.textContent="Berita: "+o.news.k+" ("+o.news.src+"): "+String(o.news.t).slice(0,120);d.append(h,c,m,nw,l)}else d.append(h,c,m,l);$("s_al").prepend(d);document.title="(!) "+o.name}
+async function evalPool(p,nmap={}){const i=poolInfo(p);if(!i||seenS.has(i.mint))return;seenS.add(i.mint);const{a,mint}=i,name=String(a.name||mint.slice(0,6)).slice(0,40),age=(Date.now()-i.created)/6e4;
+  if(age>n($("s_age").value))return;const kwl=allKw();let hit=null;try{hit=kwl.length?newsHit(a,nmap[p.relationships.base_token.data.id]):null}catch(e){}if($("s_nw").checked&&kwl.length&&!hit){nNo++;return}const liq=n(a.reserve_in_usd),fdv=n(a.fdv_usd)||n(a.market_cap_usd),h1=(a.transactions||{}).h1||{},b=h1.buyers||0,s=h1.sellers||0;let r=null,dec=6;const warns=[];
   if(liq<n($("s_liq").value))r=`likuiditas $${Math.round(liq)} terlalu kecil`;else if(fdv<=0||fdv>n($("s_fdv").value))r=`FDV $${Math.round(fdv)} di luar batas`;
   else if(b<n($("s_buy").value))r=`buyer baru ${b}`;else if(s<n($("s_sell").value))r=`seller baru ${s} (belum terbukti bisa dijual)`;
   if(!r)try{const m=await chkMint(mint);if(m.r)r=m.r;else dec=m.dec}catch(e){r="cek on-chain gagal: "+e.message}
   if(!r){const g=await chkRug(mint);if(g.r)r=g.r;else if(g.warn)warns.push(g.warn)}
   if(!r)r=await chkSell(mint,dec,n(a.base_token_price_usd));
-  if(r){L3(`x ${name}: ditolak, ${r}`,"bad");return}L3("ALERT "+name,"ok");addAlert({name,mint,age,liq,fdv,b,s,warns})}
-async function sLoop(){while(sRun){for(const pg of [1,2]){if(!sRun)return;
-  try{const r=await fetch(`${GK}/new_pools?page=${pg}`);if(r.status===429){L3("kena batas request, tunggu 15 detik","bad");await sleep(15000);continue}
-    for(const p of (await r.json()).data||[]){if(!sRun)return;await evalPool(p)}}catch(e){L3("gagal ambil pool: "+e.message,"bad")}await sleep(2500)}
-  $("s_st").textContent="Scanning... putaran berikutnya "+n($("s_int").value)+" dtk lagi";await sleep(Math.max(10,n($("s_int").value))*1000);$("s_st").textContent="Scanning..."}}
+  if(r){L3(`x ${name}: ditolak, ${r}`,"bad");return}if(hit)warns.unshift("NEWS: "+hit.k);L3("ALERT "+name+(hit?" [berita: "+hit.k+"]":""),"ok");addAlert({name,mint,age,liq,fdv,b,s,warns,news:hit})}
+async function sLoop(){while(sRun){if(Date.now()-trendAt>9e5)await refreshTrend();if(!sRun)return;for(const pg of [1,2]){if(!sRun)return;
+  try{const r=await fetch(`${GK}/new_pools?page=${pg}&include=base_token`);if(r.status===429){L3("kena batas request, tunggu 15 detik","bad");await sleep(15000);continue}
+    const j=await r.json(),nmap={};(j.included||[]).forEach(t=>{nmap[t.id]=t.attributes&&t.attributes.name});for(const p of j.data||[]){if(!sRun)return;await evalPool(p,nmap)}}catch(e){L3("gagal ambil pool: "+e.message,"bad")}await sleep(2500)}
+  $("s_st").textContent="Scanning... putaran berikutnya "+n($("s_int").value)+" dtk lagi | diabaikan karena tidak nyambung berita: "+nNo;await sleep(Math.max(10,n($("s_int").value))*1000);$("s_st").textContent="Scanning..."}}
 $("s_go").onclick=()=>{const b=$("s_go");if(sRun){sRun=false;b.textContent="Mulai scan";b.classList.remove("stop");$("s_st").textContent="Berhenti";return}
   if(needKey())return;sRun=true;b.textContent="Stop";b.classList.add("stop");$("s_st").textContent="Scanning...";L3("scan dimulai");sLoop()};
 </script></body></html>
